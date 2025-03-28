@@ -1,0 +1,335 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "source": [
+    "# Выдал метрику 82.17...\n",
+    "## Валидации нет\n",
+    "Берём три деревянные модели подбираем к ним параметры. Выбираем лучшую модель. Работы с данными нет.\n",
+    "Пути нужно поменять."
+   ],
+   "metadata": {
+    "collapsed": false
+   },
+   "id": "c5f50a05d873dc54"
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "initial_id",
+   "metadata": {
+    "collapsed": true,
+    "ExecuteTime": {
+     "end_time": "2025-03-27T11:25:36.515131100Z",
+     "start_time": "2025-03-27T11:25:36.510132400Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns\n",
+    "import os\n",
+    "\n",
+    "path_to_data = \"data_pizdata\"\n",
+    "random_state = 42"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "outputs": [],
+   "source": [
+    "# В СКАЧАНЫХ ДАНЫХ НЕТ НАЗВАНИЯ СТОЛБЦОВ и он берёт за названия первую строку\n",
+    "\n",
+    "df_x_train = pd.read_csv(os.path.join(path_to_data, \"X_train.csv\"), delimiter=',', header=None)\n",
+    "df_y_train = pd.read_csv(os.path.join(path_to_data, \"y_train.csv\"), delimiter=',', header=None)\n",
+    "df_test = pd.read_csv(os.path.join(path_to_data, \"X_test.csv\"), delimiter=',', header=None)\n",
+    "\n",
+    "df_x_train.columns = [i for i in range(df_x_train.shape[1])]\n",
+    "df_test.columns = df_x_train.columns"
+   ],
+   "metadata": {
+    "collapsed": false,
+    "ExecuteTime": {
+     "end_time": "2025-03-27T11:25:38.709449200Z",
+     "start_time": "2025-03-27T11:25:38.476079100Z"
+    }
+   },
+   "id": "d92e5ae9826c101a"
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 37,
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "Подбор гиперпараметров:   0%|          | 0/3 [00:00<?, ?модель/s]"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Подбор гиперпараметров для RandomForest...\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Обучение RandomForest:   0%|          | 0/10 [00:00<?, ?итерация/s]\u001B[A"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Fitting 3 folds for each of 10 candidates, totalling 30 fits\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "D:\\Document\\SecCourseMATMEX\\ml\\FirstKaggleCompetition\\venv\\Lib\\site-packages\\sklearn\\base.py:1389: DataConversionWarning: A column-vector y was passed when a 1d array was expected. Please change the shape of y to (n_samples,), for example using ravel().\n",
+      "  return fit_method(estimator, *args, **kwargs)\n",
+      "\n",
+      "Обучение RandomForest: 100%|██████████| 10/10 [04:56<00:00, 29.62s/итерация]\u001B[A\n",
+      "Подбор гиперпараметров:  33%|███▎      | 1/3 [04:56<09:52, 296.21s/модель]"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Лучший результат для RandomForest (MSE): 3.4659\n",
+      "\n",
+      "Подбор гиперпараметров для GradientBoosting...\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Обучение GradientBoosting:   0%|          | 0/10 [00:00<?, ?итерация/s]\u001B[A"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Fitting 3 folds for each of 10 candidates, totalling 30 fits\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "D:\\Document\\SecCourseMATMEX\\ml\\FirstKaggleCompetition\\venv\\Lib\\site-packages\\sklearn\\ensemble\\_gb.py:672: DataConversionWarning: A column-vector y was passed when a 1d array was expected. Please change the shape of y to (n_samples, ), for example using ravel().\n",
+      "  y = column_or_1d(y, warn=True)  # TODO: Is this still required?\n",
+      "\n",
+      "Обучение GradientBoosting: 100%|██████████| 10/10 [05:17<00:00, 31.73s/итерация]\u001B[A\n",
+      "Подбор гиперпараметров:  67%|██████▋   | 2/3 [10:13<05:08, 308.64s/модель]"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Лучший результат для GradientBoosting (MSE): 0.8232\n",
+      "\n",
+      "Подбор гиперпараметров для CatBoost...\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Обучение CatBoost:   0%|          | 0/10 [00:00<?, ?итерация/s]\u001B[A"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Fitting 3 folds for each of 10 candidates, totalling 30 fits\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "Обучение CatBoost: 100%|██████████| 10/10 [00:28<00:00,  2.81s/итерация]\u001B[A\n",
+      "Подбор гиперпараметров: 100%|██████████| 3/3 [10:41<00:00, 213.87s/модель]"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Лучший результат для CatBoost (MSE): 0.1582\n",
+      "\n",
+      "Лучшая модель: CatBoost с MSE: 0.1582\n",
+      "Выполняем предсказания...\n",
+      "Предсказания сохранены в файл predictions.csv\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "import pandas as pd\n",
+    "from tqdm import tqdm\n",
+    "from sklearn.model_selection import train_test_split, RandomizedSearchCV\n",
+    "from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor\n",
+    "from catboost import CatBoostRegressor\n",
+    "from sklearn.metrics import mean_squared_error\n",
+    "\n",
+    "X_train, X_test, y_train = df_x_train, df_test, df_y_train\n",
+    "\n",
+    "# Взял лучшие модели, просто посмотреть какие лучше решают задачу, в базовой комплектации\n",
+    "models = {\n",
+    "    'RandomForest': RandomForestRegressor(random_state=random_state),\n",
+    "    'GradientBoosting': GradientBoostingRegressor(random_state=random_state),\n",
+    "    'CatBoost': CatBoostRegressor(random_state=random_state, verbose=0)  # Это тоже градиентный бустинг тока от катбуста\n",
+    "}\n",
+    "\n",
+    "param_grids = {\n",
+    "    'RandomForest': {\n",
+    "        'n_estimators': [100, 200, 300],\n",
+    "        'max_depth': [None, 10, 20, 30],\n",
+    "        'min_samples_split': [2, 5, 10]\n",
+    "    },\n",
+    "    'GradientBoosting': {\n",
+    "        'n_estimators': [100, 200, 300],\n",
+    "        'learning_rate': [0.01, 0.1, 0.2],\n",
+    "        'max_depth': [3, 5, 7]\n",
+    "    },\n",
+    "    'CatBoost': {\n",
+    "        'iterations': [100, 200, 300],\n",
+    "        'learning_rate': [0.01, 0.1, 0.2],\n",
+    "        'depth': [4, 6, 8]\n",
+    "    }\n",
+    "}\n",
+    "\n",
+    "best_models = {}\n",
+    "best_scores = {}\n",
+    "\n",
+    "# Перебираем в тупую все гиперпараметры и смотрим на какиз лос минимален для каждой модели\n",
+    "for name, model in tqdm(models.items(), desc=\"Подбор гирпараметров\", unit=\"модель\"):\n",
+    "    print(f\"\\nПодбор гиперпараметров для {name}...\")\n",
+    "    \n",
+    "    search = RandomizedSearchCV(\n",
+    "        estimator=model,\n",
+    "        param_distributions=param_grids[name],\n",
+    "        n_iter=10,\n",
+    "        scoring='neg_mean_squared_error',  \n",
+    "        cv=3,\n",
+    "        random_state=42,\n",
+    "        n_jobs=-1,\n",
+    "        verbose=1  \n",
+    "    )\n",
+    "    \n",
+    "    \n",
+    "    search.fit(X_train, y_train)\n",
+    "    \n",
+    "    best_models[name] = search.best_estimator_\n",
+    "    best_scores[name] = -search.best_score_\n",
+    "    print(f\"Лучший результат для {name} (MSE): {best_scores[name]:.4f}\")\n",
+    "\n",
+    "# Выбираем по минимальному лосу лучшую модель\n",
+    "best_model_name = min(best_scores, key=best_scores.get)\n",
+    "best_model = best_models[best_model_name]\n",
+    "print(f\"\\nЛучшая модель: {best_model_name} с MSE: {best_scores[best_model_name]:.4f}\")\n",
+    "\n",
+    "\n",
+    "print(\"Выполняем предсказания...\")\n",
+    "y_pred = best_model.predict(X_test)\n",
+    "\n",
+    "sumbission = pd.DataFrame(y_pred, columns=['y'])\n",
+    "sumbission['ID'] = list(range(len(y_pred)))\n",
+    "sumbission.to_csv('predictions.csv', sep=',', index=False)\n",
+    "print(\"Предсказания сохранены в файл predictions.csv\")\n"
+   ],
+   "metadata": {
+    "collapsed": false,
+    "ExecuteTime": {
+     "end_time": "2025-03-26T20:07:34.411170100Z",
+     "start_time": "2025-03-26T19:56:52.746531600Z"
+    }
+   },
+   "id": "a1511ba745189a61"
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "### Результаты сравнения алгоритмов\n",
+    "\n",
+    "Лучший результат для RandomForest (MSE): 3.4659\n",
+    "Лучший результат для GradientBoosting (MSE): 0.8232\n",
+    "Лучшая модель: CatBoost с MSE: 0.1582\n"
+   ],
+   "metadata": {
+    "collapsed": false
+   },
+   "id": "b85145e9bd5fd5b2"
+  },
+  {
+   "cell_type": "markdown",
+   "source": [],
+   "metadata": {
+    "collapsed": false
+   },
+   "id": "f98b6a59edf5e530"
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "outputs": [],
+   "source": [
+    "#TODO добавить валидацию\n",
+    "#TODO убрать выбросы и пропуски в данных\n",
+    "#TODO посмотреть ноутбуки"
+   ],
+   "metadata": {
+    "collapsed": false
+   },
+   "id": "188aeef05f5d317"
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 2
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython2",
+   "version": "2.7.6"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
