@@ -22,7 +22,6 @@ for pair in duplicate_pairs:
     print(pair)
 print()
 
-pairs = [(5, 13), (6, 14), (7, 15), (8, 16)]
 df = pd.read_csv('data_pizdata/X_test.csv')
 for col1, col2 in duplicate_pairs:
     # Преобразуем номера столбцов в индексы (0-indexed)
