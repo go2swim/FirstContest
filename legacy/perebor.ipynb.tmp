@@ -1,0 +1,366 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "initial_id",
+   "metadata": {
+    "collapsed": true,
+    "ExecuteTime": {
+     "end_time": "2025-04-06T05:41:52.929941500Z",
+     "start_time": "2025-04-06T05:41:52.809596700Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns\n",
+    "import os\n",
+    "from sklearn.model_selection import train_test_split\n",
+    "from sklearn.metrics import mean_squared_error\n",
+    "from catboost import CatBoostRegressor\n",
+    "from src.const import PATH_TO_DATA, RANDOM_STATE\n",
+    "from sklearn.model_selection import KFold, cross_val_score\n",
+    "from sklearn.model_selection import KFold, GridSearchCV\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "outputs": [],
+   "source": [
+    "from src.utils import load_data\n",
+    "df_x_train, df_y_train, df_test = load_data()"
+   ],
+   "metadata": {
+    "collapsed": false,
+    "ExecuteTime": {
+     "end_time": "2025-04-06T05:42:06.747415800Z",
+     "start_time": "2025-04-06T05:42:06.563680700Z"
+    }
+   },
+   "id": "d92e5ae9826c101a"
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Дубликаты: \n",
+      "(4, 12): 40000 из 40000\n",
+      "(5, 13): 40000 из 40000\n",
+      "(6, 14): 40000 из 40000\n",
+      "(7, 15): 40000 из 40000\n",
+      "Дубликаты удалены\n",
+      "12\n"
+     ]
+    }
+   ],
+   "source": [
+    "dublicates = [(4, 12), (5, 13), (6, 14), (7, 15)]\n",
+    "try:\n",
+    "    print('Дубликаты: ')\n",
+    "    for i in dublicates:\n",
+    "        print(f'{i}: {np.sum(df_x_train.iloc[:, i[0]] == df_x_train.iloc[:, i[1]])} из {len(df_x_train.iloc[:, 0])}')\n",
+    "        \n",
+    "    df_x_train.drop(columns=[i[0] for i in dublicates], inplace=True)\n",
+    "    df_test.drop(columns=[i[0] for i in dublicates], inplace=True)\n",
+    "    print('Дубликаты удалены')\n",
+    "    \n",
+    "except Exception:\n",
+    "    print('Дубликаты уже удалены')\n",
+    "\n",
+    "print(df_x_train.shape[1])\n",
+    "assert df_x_train.shape[1] == 12"
+   ],
+   "metadata": {
+    "collapsed": false,
+    "ExecuteTime": {
+     "end_time": "2025-04-06T05:42:06.944396900Z",
+     "start_time": "2025-04-06T05:42:06.919474200Z"
+    }
+   },
+   "id": "de670431e952edd2"
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "# Отобраны лучшие фичи у Лёхи плюс самые коррелированые фичи"
+   ],
+   "metadata": {
+    "collapsed": false
+   },
+   "id": "743687293c21f581"
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "outputs": [],
+   "source": [
+    "def add_features(X):\n",
+    "    # Старые фичи (27, 28, 39, 41, 42)\n",
+    "    new_features = []\n",
+    "    \n",
+    "    # Фича 27: сумма по строкам\n",
+    "    sum_f = np.sum(X, axis=1, keepdims=True)\n",
+    "    new_features.append(sum_f)\n",
+    "    \n",
+    "    # Фича 28: среднее по строкам\n",
+    "    mean_f = np.mean(X, axis=1, keepdims=True)\n",
+    "    new_features.append(mean_f)\n",
+    "    \n",
+    "    # Фича 39: количество значений выше среднего\n",
+    "    count_above_mean = np.sum(X > mean_f, axis=1, keepdims=True)\n",
+    "    new_features.append(count_above_mean)\n",
+    "    \n",
+    "    # Фича 41: логарифм абсолютных значений для первых 4 признаков\n",
+    "    log_features = np.log1p(np.abs(X[:, :4]))\n",
+    "    new_features.append(log_features)\n",
+    "    \n",
+    "    # Фича 42: квадратный корень для признаков 4-8\n",
+    "    sqrt_features = np.sqrt(np.abs(X[:, 4:8]) + 1e-6)\n",
+    "    new_features.append(sqrt_features)\n",
+    "\n",
+    "    # Новые преобразования для фич 10, 11, 12 (индексы 9,10,11 в X)\n",
+    "    f10 = X[:, 9:10]\n",
+    "    f11 = X[:, 10:11]\n",
+    "    f12 = X[:, 11:12]\n",
+    "\n",
+    "    # 1. Нелинейные преобразования для f12 (корреляция -0.86)\n",
+    "    new_features.append(np.sqrt(np.abs(f12)))          # Фича 43\n",
+    "    new_features.append(f12 ** 2)                      # Фича 44\n",
+    "\n",
+    "    # 2. Взаимодействие фич 10-11-12\n",
+    "    new_features.append(f10 * f12)                     # Фича 45\n",
+    "    new_features.append((f11 + f12) / (f10 + 1e-6))    # Фича 46\n",
+    "\n",
+    "    # 3. Условные преобразования\n",
+    "    new_features.append(np.where(f12 < np.median(f12), 0, 1)) # Фича 47\n",
+    "    new_features.append(np.log1p(np.abs(f10 + f11)))   # Фича 48\n",
+    "\n",
+    "    # 4. Агрегаты\n",
+    "    new_features.append((f10 + f11 + f12) / 3)         # Фича 49\n",
+    "    new_features.append(np.max([f10, f11, f12], axis=0)) # Фича 50\n",
+    "\n",
+    "    return np.hstack([X] + new_features)\n",
+    "\n",
+    "\n",
+    "df_x_train = add_features(df_x_train.values)\n",
+    "df_test = add_features(df_test.values)"
+   ],
+   "metadata": {
+    "collapsed": false,
+    "ExecuteTime": {
+     "end_time": "2025-04-06T05:41:57.847643100Z",
+     "start_time": "2025-04-06T05:41:57.825871400Z"
+    }
+   },
+   "id": "1edcbf0bbe573f27"
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "# Лёхины фичи"
+   ],
+   "metadata": {
+    "collapsed": false
+   },
+   "id": "65450f8aa4f6aa21"
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "outputs": [],
+   "source": [
+    "from scipy.stats import skew\n",
+    "\n",
+    "from scipy.stats import kurtosis\n",
+    "\n",
+    "\n",
+    "def add_features(X):\n",
+    "    sum_f = np.sum(X, axis=1, keepdims=True)\n",
+    "    mean_f = np.mean(X, axis=1, keepdims=True)\n",
+    "    std_f = np.std(X, axis=1, keepdims=True)\n",
+    "\n",
+    "    interactions = np.hstack([\n",
+    "        X[:, i:i+1] * X[:, j:j+1]\n",
+    "        for i in range(4)\n",
+    "        for j in range(i+1, 4)\n",
+    "    ])\n",
+    "\n",
+    "    return np.hstack([\n",
+    "        X,\n",
+    "        sum_f,\n",
+    "        mean_f,\n",
+    "        std_f,\n",
+    "        np.max(X, axis=1, keepdims=True),\n",
+    "        np.min(X, axis=1, keepdims=True),\n",
+    "        np.median(X, axis=1, keepdims=True),\n",
+    "        skew(X, axis=1, keepdims=True),\n",
+    "        kurtosis(X, axis=1, keepdims=True),\n",
+    "        np.sum(X > mean_f, axis=1, keepdims=True),\n",
+    "        np.log1p(np.abs(X[:, :4])),\n",
+    "        np.sqrt(np.abs(X[:, 4:8]) + 1e-6),\n",
+    "        interactions,\n",
+    "        X[:, :4] ** 2,\n",
+    "        X[:, 4:8] ** 3,\n",
+    "        (X[:, :4] + 1e-6) / (X[:, 4:8] + 1e-6),\n",
+    "        np.exp(0.01 * X[:, :4])\n",
+    "    ])\n",
+    "\n",
+    "df_x_train = add_features(df_x_train.values)\n",
+    "df_test = add_features(df_test.values)"
+   ],
+   "metadata": {
+    "collapsed": false
+   },
+   "id": "b80ad0fea96c8e03"
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "## На данный момент:\n",
+    "Перебирал все варианты, лучший всё равно пока без добавления фичей.\n",
+    "Большее увеличение итераций ничего не даёт.\n",
+    "Меньшая глубина даёт хуже скор, сильно большая тоже хуже. 9 На проверке\n"
+   ],
+   "metadata": {
+    "collapsed": false
+   },
+   "id": "e9648c05623e1a38"
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "outputs": [],
+   "source": [
+    "# Актуальные параметры\n",
+    "params = {'iterations': 30000, 'learning_rate': 0.019460075699874305, 'depth': 7, 'l2_leaf_reg': 3, 'border_count': 128, 'bagging_temperature': 1, 'random_strength': 5, 'grow_policy': 'SymmetricTree', 'min_data_in_leaf': 1}"
+   ],
+   "metadata": {
+    "collapsed": false,
+    "ExecuteTime": {
+     "end_time": "2025-04-06T07:42:01.200490300Z",
+     "start_time": "2025-04-06T07:42:01.173566600Z"
+    }
+   },
+   "id": "ab11a2040c77044"
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CV MSE scores: [0.01563484 0.01543236 0.01535491 0.01544792 0.01561491]\n",
+      "Среднее CV MSE: 0.01549698593596448\n"
+     ]
+    }
+   ],
+   "source": [
+    "cv = KFold( n_splits=5, shuffle=True, random_state=RANDOM_STATE)\n",
+    "model = CatBoostRegressor(**params, random_state=RANDOM_STATE, verbose=0)\n",
+    "scores = cross_val_score(model, df_x_train, df_y_train[0], cv=cv,\n",
+    "                         scoring='neg_mean_squared_error', n_jobs=-1)\n",
+    "\n",
+    "cv_mse_scores = -scores\n",
+    "print(\"CV MSE scores:\", cv_mse_scores)\n",
+    "print(\"Среднее CV MSE:\", np.mean(cv_mse_scores))\n"
+   ],
+   "metadata": {
+    "collapsed": false,
+    "ExecuteTime": {
+     "end_time": "2025-04-06T07:45:14.187185Z",
+     "start_time": "2025-04-06T07:42:09.526796Z"
+    }
+   },
+   "id": "8f0e1418a6e31ca8"
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "outputs": [
+    {
+     "data": {
+      "text/plain": "<catboost.core.CatBoostRegressor at 0x1b4473b4f20>"
+     },
+     "execution_count": 21,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "from src.utils import save_predictions\n",
+    "model.fit(df_x_train, df_y_train[0])\n",
+    "\n",
+    "y_pred = model.predict(df_test)\n",
+    "save_predictions(y_pred)"
+   ],
+   "metadata": {
+    "collapsed": false,
+    "ExecuteTime": {
+     "end_time": "2025-04-06T07:46:32.325158Z",
+     "start_time": "2025-04-06T07:45:20.117093700Z"
+    }
+   },
+   "id": "a1511ba745189a61"
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "MSE на валидации: 0.09 все фичи\n",
+    "0.07 корелированые фичи\n",
+    "0.033 с корелироваными много итераций\n",
+    "0.0174\n",
+    "0.021 features\n",
+    "0.12\n",
+    "0.024636339078590253\n",
+    "\n",
+    "15000: 0.0154\n",
+    "30000: 0.014605868795768227\n",
+    "60000: 0.014376861439051869\n",
+    "30000, depth 5: 0.01635127145538648"
+   ],
+   "metadata": {
+    "collapsed": false
+   },
+   "id": "ac9a0f709a28ba2e"
+  },
+  {
+   "cell_type": "markdown",
+   "source": [],
+   "metadata": {
+    "collapsed": false
+   },
+   "id": "f98b6a59edf5e530"
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 2
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython2",
+   "version": "2.7.6"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}

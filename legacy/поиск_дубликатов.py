@@ -1,7 +1,7 @@
 import pandas as pd
 
 # Читаем CSV-файл. Если в файле нет заголовков, можно добавить параметр header=None
-df = pd.read_csv('data_pizdata/X_train.csv')
+df = pd.read_csv('../data/X_train.csv')
 
 # Поиск «почти дубликатов» с помощью корреляции
 # Вычисляем абсолютную корреляционную матрицу
@@ -22,7 +22,7 @@ for pair in duplicate_pairs:
     print(pair)
 print()
 
-df = pd.read_csv('data_pizdata/X_test.csv')
+df = pd.read_csv('../data/X_test.csv')
 for col1, col2 in duplicate_pairs:
     # Преобразуем номера столбцов в индексы (0-indexed)
     idx1 = col1 - 1

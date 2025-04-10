@@ -17,13 +17,13 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 1,
+   "execution_count": 30,
    "id": "initial_id",
    "metadata": {
     "collapsed": true,
     "ExecuteTime": {
-     "end_time": "2025-04-06T11:42:12.902905200Z",
-     "start_time": "2025-04-06T11:42:12.275015500Z"
+     "end_time": "2025-03-28T13:59:54.197040Z",
+     "start_time": "2025-03-28T13:59:54.176988600Z"
     }
    },
    "outputs": [],
@@ -53,188 +53,110 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 13,
+   "execution_count": 31,
    "outputs": [],
    "source": [
     "from src.utils import load_data\n",
-    "df_x_train, df_y_train, df_test = load_data('../data_pizdata')"
+    "df_x_train, df_y_train, df_test = load_data()"
    ],
    "metadata": {
     "collapsed": false,
     "ExecuteTime": {
-     "end_time": "2025-04-06T11:56:45.288049100Z",
-     "start_time": "2025-04-06T11:56:45.122886500Z"
+     "end_time": "2025-03-28T13:59:55.977417500Z",
+     "start_time": "2025-03-28T13:59:55.731156800Z"
     }
    },
    "id": "d92e5ae9826c101a"
   },
   {
    "cell_type": "code",
-   "execution_count": 14,
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Дубликаты: \n",
-      "(4, 12): 40000 из 40000\n",
-      "(5, 13): 40000 из 40000\n",
-      "(6, 14): 40000 из 40000\n",
-      "(7, 15): 40000 из 40000\n",
-      "Дубликаты удалены\n",
-      "12\n"
-     ]
-    }
-   ],
+   "execution_count": 32,
+   "outputs": [],
    "source": [
-    "dublicates = [(4, 12), (5, 13), (6, 14), (7, 15)]\n",
-    "try:\n",
-    "    print('Дубликаты: ')\n",
-    "    for i in dublicates:\n",
-    "        print(f'{i}: {np.sum(df_x_train.iloc[:, i[0]] == df_x_train.iloc[:, i[1]])} из {len(df_x_train.iloc[:, 0])}')\n",
-    "        \n",
-    "    df_x_train.drop(columns=[i[0] for i in dublicates], inplace=True)\n",
-    "    df_test.drop(columns=[i[0] for i in dublicates], inplace=True)\n",
-    "    print('Дубликаты удалены')\n",
-    "    \n",
-    "except Exception:\n",
-    "    print('Дубликаты уже удалены')\n",
+    "columns_to_drop = [4, 10, 11]  \n",
     "\n",
-    "print(df_x_train.shape[1])\n",
-    "assert df_x_train.shape[1] == 12"
+    "df_x_train = df_x_train[columns_to_drop]\n",
+    "df_test = df_test[columns_to_drop]"
    ],
    "metadata": {
     "collapsed": false,
     "ExecuteTime": {
-     "end_time": "2025-04-06T11:56:45.891022800Z",
-     "start_time": "2025-04-06T11:56:45.863754400Z"
+     "end_time": "2025-03-28T13:59:55.977417500Z",
+     "start_time": "2025-03-28T13:59:55.956481600Z"
     }
    },
    "id": "3f7da53754eb0916"
   },
   {
    "cell_type": "code",
-   "execution_count": 15,
-   "outputs": [],
-   "source": [
-    "def add_features(X):\n",
-    "    # Старые фичи (27, 28, 39, 41, 42)\n",
-    "    new_features = []\n",
-    "    \n",
-    "    # Фича 27: сумма по строкам\n",
-    "    sum_f = np.sum(X, axis=1, keepdims=True)\n",
-    "    new_features.append(sum_f)\n",
-    "    \n",
-    "    # Фича 28: среднее по строкам\n",
-    "    mean_f = np.mean(X, axis=1, keepdims=True)\n",
-    "    new_features.append(mean_f)\n",
-    "    \n",
-    "    # Фича 39: количество значений выше среднего\n",
-    "    count_above_mean = np.sum(X > mean_f, axis=1, keepdims=True)\n",
-    "    new_features.append(count_above_mean)\n",
-    "    \n",
-    "    # Фича 41: логарифм абсолютных значений для первых 4 признаков\n",
-    "    log_features = np.log1p(np.abs(X[:, :4]))\n",
-    "    new_features.append(log_features)\n",
-    "    \n",
-    "    # Фича 42: квадратный корень для признаков 4-8\n",
-    "    sqrt_features = np.sqrt(np.abs(X[:, 4:8]) + 1e-6)\n",
-    "    new_features.append(sqrt_features)\n",
-    "\n",
-    "    # Новые преобразования для фич 10, 11, 12 (индексы 9,10,11 в X)\n",
-    "    f10 = X[:, 9:10]\n",
-    "    f11 = X[:, 10:11]\n",
-    "    f12 = X[:, 11:12]\n",
-    "\n",
-    "    # 1. Нелинейные преобразования для f12 (корреляция -0.86)\n",
-    "    new_features.append(np.sqrt(np.abs(f12)))          # Фича 43\n",
-    "    new_features.append(f12 ** 2)                      # Фича 44\n",
-    "\n",
-    "    # 2. Взаимодействие фич 10-11-12\n",
-    "    new_features.append(f10 * f12)                     # Фича 45\n",
-    "    new_features.append((f11 + f12) / (f10 + 1e-6))    # Фича 46\n",
-    "\n",
-    "    # 3. Условные преобразования\n",
-    "    new_features.append(np.where(f12 < np.median(f12), 0, 1)) # Фича 47\n",
-    "    new_features.append(np.log1p(np.abs(f10 + f11)))   # Фича 48\n",
-    "\n",
-    "    # 4. Агрегаты\n",
-    "    new_features.append((f10 + f11 + f12) / 3)         # Фича 49\n",
-    "    new_features.append(np.max([f10, f11, f12], axis=0)) # Фича 50\n",
-    "\n",
-    "    return np.hstack([X] + new_features)\n",
-    "\n",
-    "\n",
-    "df_x_train = add_features(df_x_train.values)\n",
-    "df_test = add_features(df_test.values)"
-   ],
-   "metadata": {
-    "collapsed": false,
-    "ExecuteTime": {
-     "end_time": "2025-04-06T11:56:46.839243200Z",
-     "start_time": "2025-04-06T11:56:46.783447500Z"
-    }
-   },
-   "id": "50bab20d27f0e305"
-  },
-  {
-   "cell_type": "code",
    "execution_count": null,
    "outputs": [],
-   "source": [
-    "df_train = df_x_train.copy()\n",
-    "df_train = np.hstack([df_train, df_y_train])\n",
-    "corr_matrix = pd.DataFrame(df_train).corr()\n",
-    "\n",
-    "plt.figure(figsize=(12, 10))\n",
-    "sns.heatmap(corr_matrix, annot=True, fmt=\".2f\", cmap=\"coolwarm\", square=True)\n",
-    "plt.title(\"Тепловая карта корреляций\")\n",
-    "plt.show()"
-   ],
+   "source": [],
    "metadata": {
-    "collapsed": false,
-    "is_executing": true
+    "collapsed": false
    },
-   "id": "3fbef0ffdddc50cd"
+   "id": "d1a0f5e8b9da2bff"
   },
   {
    "cell_type": "code",
-   "execution_count": 6,
-   "outputs": [
-    {
-     "data": {
-      "text/plain": "array([[0.4510095 , 0.61460638, 0.16730614, ..., 2.27122476, 5.16113601,\n        6.79214501],\n       [0.8371234 , 0.55844869, 0.03419815, ..., 1.31779557, 1.01999645,\n        2.        ],\n       [0.60563576, 0.35095504, 0.67840821, ..., 1.59361829, 3.51079434,\n        6.61085878],\n       ...,\n       [0.4811432 , 0.70772098, 0.88116348, ..., 1.87793471, 2.16079527,\n        3.53998395],\n       [0.69956601, 0.90805913, 0.57516987, ..., 1.44387328, 1.35126554,\n        2.        ],\n       [0.60549189, 0.11642799, 0.08077757, ..., 1.27016495, 1.21970883,\n        1.56143998]])"
-     },
-     "execution_count": 6,
-     "metadata": {},
-     "output_type": "execute_result"
-    }
-   ],
+   "execution_count": 33,
+   "outputs": [],
    "source": [
-    "df_x_train.drop(columns=[0, 1, 2, 3, 4, 5, 6, 7, 8], inplace=True)\n",
-    "df_x_train.drop(columns=[0, 1, 2, 3, 4, 5, 6, 7, 8], inplace=True)"
+    "# Создадим новые признаки\n",
+    "\n",
+    "# 1) Полиномиальные признаки (включая взаимодействия, степень=2)\n",
+    "poly = PolynomialFeatures(degree=2, include_bias=False)\n",
+    "# Применяем только к обучающей части\n",
+    "X_poly_train = poly.fit_transform(df_x_train)\n",
+    "X_poly_test = poly.transform(df_test)\n",
+    "\n",
+    "# Полиномиальные фичи генерируются автоматически, но можно добавить и ручные:\n",
+    "# Логарифмы, корень, обратные величины:\n",
+    "log_train = np.log1p(df_x_train.clip(lower=0) + 1)  # log(x+1)\n",
+    "sqrt_train = np.sqrt(df_x_train.clip(lower=0))      # sqrt(x)\n",
+    "inv_train = 1 / (df_x_train.clip(lower=1))          # 1/(x+1), чтобы не было деления на 0\n",
+    "\n",
+    "log_test = np.log1p(df_test.clip(lower=0) + 1)\n",
+    "sqrt_test = np.sqrt(df_test.clip(lower=0))\n",
+    "inv_test = 1 / (df_test.clip(lower=1))\n",
+    "\n",
+    "# Соединяем всё вместе в один массив/фрейм\n",
+    "# Обратите внимание: X_poly_train и log_train - это numpy и pandas, их нужно собрать воедино\n",
+    "df_x_train = np.concatenate([\n",
+    "    X_poly_train,\n",
+    "    log_train.values,\n",
+    "    sqrt_train.values,\n",
+    "    inv_train.values\n",
+    "], axis=1)\n",
+    "\n",
+    "df_test = np.concatenate([\n",
+    "    X_poly_test,\n",
+    "    log_test.values,\n",
+    "    sqrt_test.values,\n",
+    "    inv_test.values\n",
+    "], axis=1)"
    ],
    "metadata": {
     "collapsed": false,
     "ExecuteTime": {
-     "end_time": "2025-04-06T11:42:58.015663500Z",
-     "start_time": "2025-04-06T11:42:57.984685500Z"
+     "end_time": "2025-03-28T13:59:56.282729500Z",
+     "start_time": "2025-03-28T13:59:56.234112Z"
     }
    },
-   "id": "ce07540a0f5a0371"
+   "id": "ef119e1f911289d7"
   },
   {
    "cell_type": "code",
-   "execution_count": 7,
+   "execution_count": 35,
    "outputs": [
     {
      "name": "stdout",
      "output_type": "stream",
      "text": [
       "Fitting 5 folds for each of 5 candidates, totalling 25 fits\n",
-      "Лучшие параметры: {'ridge__alpha': 10.0}\n",
-      "Лучшее отрицательное MSE (на кросс-валидации): -47.368162474145116\n",
-      "MSE на валидации: 48.4030\n"
+      "Лучшие параметры: {'ridge__alpha': 100.0}\n",
+      "Лучшее отрицательное MSE (на кросс-валидации): -42.436581834304874\n",
+      "MSE на валидации: 43.3474\n"
      ]
     }
    ],
@@ -282,8 +204,8 @@
    "metadata": {
     "collapsed": false,
     "ExecuteTime": {
-     "end_time": "2025-04-06T11:43:26.906721800Z",
-     "start_time": "2025-04-06T11:43:24.175854Z"
+     "end_time": "2025-03-28T14:00:02.033198300Z",
+     "start_time": "2025-03-28T13:59:59.083367300Z"
     }
    },
    "id": "8f0e1418a6e31ca8"
