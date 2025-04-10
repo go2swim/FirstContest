@@ -1,4 +1,4 @@
-# Модель для соревнования на [Kagle](https://www.kaggle.com/competitions/ml-fiit-2025-1)
+# Модель для соревнования на [Kaggle](https://www.kaggle.com/competitions/ml-fiit-2025-1)
 Команда: ZazaTeam (топ 6)
 ## Описание решения:
 Столбцы 4, 5, 6, 7 и 12, 13, 14, 15 - Являются дубликатами
